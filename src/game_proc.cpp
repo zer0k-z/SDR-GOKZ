@@ -101,7 +101,7 @@ struct VeloGlyphUvs
     VeloUv uvs[4];
 };
 
-const char VELO_NUMBERS[] = "0123456789";
+const char VELO_NUMBERS[] = "0123456789()";
 const s32 NUM_VELO_NUMBERS = SVR_ARRAY_SIZE(VELO_NUMBERS) - 1;
 
 const s32 NUM_VELO_VERTICES = 256;
@@ -135,16 +135,26 @@ D2D1_RECT_F velo_inner_glyph_bounds[NUM_VELO_NUMBERS];
 // rectangles for each glyph without padding and width of the advance.
 D2D1_RECT_F velo_advance_glyph_bounds[NUM_VELO_NUMBERS];
 
-// The atlas only contains numbers.
+// The atlas only contains numbers and these badly hardcoded characters.
 s32 remap_to_velo_index(char c)
 {
-    assert((c >= '0') && (c <= '9'));
+    assert((c >= '0') && (c <= '9') || (c != '(') || (c != ')') || (c != '\n'));
+    if (c == '(')
+    {
+        return 10;
+    }
+    if (c == ')')
+    {
+        return 11;
+    }
+    
     return c - '0';
 }
 
 // Incoming externally.
 float player_velo[3];
-
+bool on_ground;
+float takeoff_velo[3];
 // -------------------------------------------------
 // Mosample state.
 
@@ -1711,7 +1721,7 @@ rexit:
     return ret;
 }
 
-void draw_velo(ID3D11DeviceContext* d3d11_context, ID3D11RenderTargetView* rtv, const char* text, s32 text_len)
+void draw_velo(ID3D11DeviceContext* d3d11_context, ID3D11RenderTargetView* rtv, const char* text, s32 text_len, bool takeoff)
 {
     assert(text_len < MAX_VELO_LENGTH);
 
@@ -1800,8 +1810,16 @@ void draw_velo(ID3D11DeviceContext* d3d11_context, ID3D11RenderTargetView* rtv, 
     scr_pos_x -= movie_width / 2.0f;
 
     // Align to profile.
-    scr_pos_x += ((float)movie_profile.veloc_align[0] / 200.0f) * movie_width;
-    scr_pos_y -= ((float)movie_profile.veloc_align[1] / 200.0f) * movie_height;
+    if (takeoff)
+    {
+        scr_pos_x += ((float)movie_profile.veloc_takeoff_align[0] / 200.0f) * movie_width;
+        scr_pos_y -= ((float)movie_profile.veloc_takeoff_align[1] / 200.0f) * movie_height;
+    }
+    else
+    {
+        scr_pos_x += ((float)movie_profile.veloc_align[0] / 200.0f) * movie_width;
+        scr_pos_y -= ((float)movie_profile.veloc_align[1] / 200.0f) * movie_height;
+    }
 
     XMMATRIX proj = XMMatrixOrthographicRH(movie_width, movie_height, -1.0f, 1.0f);
     XMMATRIX view = XMMatrixTranslation(scr_pos_x, scr_pos_y, 0.0f);
@@ -2106,13 +2124,21 @@ void encode_video_frame(ID3D11DeviceContext* d3d11_context, ID3D11ShaderResource
     if (movie_profile.veloc_enabled)
     {
         // We only deal with XY velo.
-        float vel = sqrt(player_velo[0] * player_velo[0] + player_velo[1] * player_velo[1]);
-        s32 real_vel = (s32)(vel + 0.5f);
+        // Speed is rounded down.
+        s32 vel = (s32)sqrt(player_velo[0] * player_velo[0] + player_velo[1] * player_velo[1]);
 
         char buf[MAX_VELO_LENGTH];
-        s32 len = stbsp_snprintf(buf, MAX_VELO_LENGTH, "%d", real_vel);
-
-        draw_velo(d3d11_context, rtv, buf, len);
+        s32 len;
+        len = stbsp_snprintf(buf, MAX_VELO_LENGTH, "%d", vel);
+        draw_velo(d3d11_context, rtv, buf, len, false);
+        // Takeoff, so draw the takeoff velocity as well.
+        // TODO: detect ladder takeoff as well? Probably only works on 3.0 replays.
+        if (!on_ground)
+        {
+            s32 takeoffvel = (s32)sqrt(takeoff_velo[0] * takeoff_velo[0] + takeoff_velo[1] * takeoff_velo[1]);
+            len = stbsp_snprintf(buf, MAX_VELO_LENGTH, "(%d)", takeoffvel);
+            draw_velo(d3d11_context, rtv, buf, len, true);
+        }
     }
 
     convert_pixel_formats(d3d11_context, srv);
@@ -2189,6 +2215,24 @@ void proc_frame(ID3D11DeviceContext* d3d11_context, ID3D11ShaderResourceView* ga
 void proc_give_velocity(float* xyz)
 {
     memcpy(player_velo, xyz, sizeof(float) * 3);
+}
+
+void proc_update_ground(bool ground)
+{
+    // Update takeoff speed.
+    if (on_ground && !ground)
+    {
+        memcpy(takeoff_velo, player_velo, sizeof(float) * 3);
+        // Hardcode takeoff speed. A bit yikes, but that will do for now.
+        // TODO: Add SKZ/VNL support, and add options to disable this whole thing.
+        float takeoff_speed = sqrt(takeoff_velo[0] * takeoff_velo[0] + takeoff_velo[1] * takeoff_velo[1]);
+        if (takeoff_speed > 380.0f)
+        {
+            takeoff_velo[0] *= 380.0f/takeoff_speed;
+            takeoff_velo[1] *= 380.0f/takeoff_speed;
+        }
+    }
+    on_ground = ground;
 }
 
 bool proc_is_velo_enabled()

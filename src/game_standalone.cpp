@@ -521,6 +521,32 @@ float* get_player_vel(void* player)
     return NULL;
 }
 
+bool is_on_ground(void* player)
+{
+    int flags;
+    switch (launcher_data.app_id)
+    {
+        case STEAM_GAME_CSS:
+        {
+            return false;
+        }
+
+        case STEAM_GAME_CSGO:
+        {
+            u8* addr = (u8*)player + 260;
+            int flags = (s32) *addr;
+            return !!(flags & (1<<0)); // FL_ONGROUND
+        }
+
+        case STEAM_GAME_TF2:
+        {
+            return false;
+        }
+
+        default: assert(false);
+    }
+}
+
 void __cdecl snd_paint_chans_override(s32 end_time, bool is_underwater)
 {
     snd_listener_underwater = is_underwater;
@@ -614,6 +640,7 @@ void give_player_velo()
     if (player)
     {
         svr_give_velocity(get_player_vel(player));
+        svr_update_ground(is_on_ground(player));
     }
 }
 

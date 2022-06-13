@@ -28,6 +28,7 @@ struct MovieProfile
     enum DWRITE_FONT_STYLE veloc_font_style;
     enum DWRITE_FONT_WEIGHT veloc_font_weight;
     s32 veloc_align[2];
+    s32 veloc_takeoff_align[2];
 
     // Audio:
     s32 audio_enabled;

@@ -132,6 +132,7 @@ SVR_API bool svr_is_audio_enabled();
 // Must be called before svr_frame.
 SVR_API void svr_give_velocity(float* xyz);
 
+SVR_API void svr_update_ground(bool ground);
 // Give audio samples to write. This must be 16 bit samples at 44100 hz.
 SVR_API void svr_give_audio(SvrWaveSample* samples, int num_samples);
 

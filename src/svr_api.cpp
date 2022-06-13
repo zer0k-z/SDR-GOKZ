@@ -297,6 +297,11 @@ void svr_give_velocity(float* xyz)
     proc_give_velocity(xyz);
 }
 
+void svr_update_ground(bool ground)
+{
+    proc_update_ground(ground);
+}
+
 void svr_give_audio(SvrWaveSample* samples, int num_samples)
 {
     proc_give_audio(samples, num_samples);
