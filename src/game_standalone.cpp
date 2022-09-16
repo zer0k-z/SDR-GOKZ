@@ -1861,3 +1861,29 @@ extern "C" __declspec(dllexport) void svr_init_from_injector(SvrGameInitData* in
 
     standalone_init_async(NULL); // We are already in a thread, so call directly.
 }
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID)
+{
+    static SvrGameInitData* init_data;
+
+    switch (fdwReason)
+    {
+    case DLL_PROCESS_ATTACH:
+        DisableThreadLibraryCalls(hModule);
+
+        // FIXME
+        init_data = new SvrGameInitData();
+        init_data->app_id = 440;
+        init_data->svr_path = ".\\svr_data";  // in game directory
+
+        svr_init_from_launcher(init_data);
+
+        break;
+
+    case DLL_PROCESS_DETACH:
+        delete init_data;
+        break;
+    }
+
+    return TRUE;
+}
