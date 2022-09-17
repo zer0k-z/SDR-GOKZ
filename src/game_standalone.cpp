@@ -1,4 +1,5 @@
 #include "game_shared.h"
+#include "svr_args.h"
 #include <Windows.h>
 #include <MinHook.h>
 #include <assert.h>
@@ -30,6 +31,7 @@
 // Stuff passed in from launcher.
 SvrGameInitData launcher_data;
 DWORD main_thread_id;
+CommandLine cmdline;
 
 // --------------------------------------------------------------------------
 
@@ -1853,6 +1855,42 @@ DWORD find_main_thread_id()
     return ret;
 }
 
+SvrGameInitData get_init_data_from_command_line()
+{
+    SvrGameInitData init_data;
+
+    const char *app_id = cmdline.FindArg("-svr_appid");
+    if (!app_id)
+    {
+        standalone_error("Cannot deduce AppID. Use the -svr_appid <AppID> launch option.");
+    }
+    init_data.app_id = atoi(app_id);
+
+    const char *svr_path = cmdline.FindArg("-svr_path");
+    if (!app_id)
+    {
+        standalone_error("Cannot deduce SVR path. Use the -svr_path <path> launch option.");
+    }
+    init_data.svr_path = svr_path;
+
+    return init_data;
+}
+
+void svr_init_from_dll()
+{
+    main_thread_id = GetCurrentThreadId();
+
+    launcher_data = get_init_data_from_command_line();
+
+    MH_Initialize();
+
+    // Needs to run synchronously otherwise engine may create the DirectX device before hooking happends.
+    create_d3d9_hooks();
+
+    // Init needs to be done async because we need to wait for the libraries to load while the game loads as normal.
+    CreateThread(NULL, 0, standalone_init_async, NULL, 0, NULL);
+}
+
 // Called by the injector after the game has started. Most libraries are loaded here.
 extern "C" __declspec(dllexport) void svr_init_from_injector(SvrGameInitData* init_data)
 {
@@ -1864,24 +1902,19 @@ extern "C" __declspec(dllexport) void svr_init_from_injector(SvrGameInitData* in
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID)
 {
-    static SvrGameInitData* init_data;
-
     switch (fdwReason)
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
 
-        // FIXME
-        init_data = new SvrGameInitData();
-        init_data->app_id = 440;
-        init_data->svr_path = ".\\svr_data";  // in game directory
+        cmdline.Init();
 
-        svr_init_from_launcher(init_data);
+        svr_init_from_dll();
 
         break;
 
     case DLL_PROCESS_DETACH:
-        delete init_data;
+        cmdline.Destroy();
         break;
     }
 
