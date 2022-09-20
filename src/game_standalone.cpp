@@ -1867,7 +1867,7 @@ SvrGameInitData get_init_data_from_command_line()
     init_data.app_id = atoi(app_id);
 
     const char *svr_path = cmdline.FindArg("-svr_path");
-    if (!app_id)
+    if (!svr_path)
     {
         standalone_error("Cannot deduce SVR path. Use the -svr_path <path> launch option.");
     }
