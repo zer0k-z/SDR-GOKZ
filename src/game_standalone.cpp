@@ -1855,32 +1855,63 @@ DWORD find_main_thread_id()
     return ret;
 }
 
-SvrGameInitData get_init_data_from_command_line()
+SteamAppId app_id_from_game(const char *game)
 {
-    SvrGameInitData init_data;
+    if (strcmp(game, "cstrike") == 0)
+        return STEAM_GAME_CSS;
+    if (strcmp(game, "csgo") == 0)
+        return STEAM_GAME_CSGO;
+    if (strcmp(game, "tf") == 0)
+        return STEAM_GAME_TF2;
+    if (strcmp(game, "zps") == 0)
+        return STEAM_GAME_ZPS;
+    if (strcmp(game, "empires") == 0)
+        return STEAM_GAME_EMPIRES;
+    if (strcmp(game, "synergy") == 0)
+        return STEAM_GAME_SYNERGY;
+    if (strcmp(game, "hl2") == 0)
+        return STEAM_GAME_HL2;
+    if (strcmp(game, "hl2mp") == 0)
+        return STEAM_GAME_HL2DM;
+    if (strcmp(game, "bms") == 0)
+        return STEAM_GAME_BMS;
+    if (strcmp(game, "hdtf") == 0)
+        return STEAM_GAME_HDTF;
 
-    const char *app_id = cmdline.FindArg("-svr_appid");
-    if (!app_id)
+    return 0;
+}
+
+void get_init_data_from_command_line(SvrGameInitData &init_data)
+{
+    if (const char *app_id = cmdline.FindArg("-svr_appid"))
+    {
+        init_data.app_id = atoi(app_id);
+    }
+    else if (const char *game = cmdline.FindArg("-game"))
+    {
+        init_data.app_id = app_id_from_game(game);
+    }
+
+    if (!init_data.app_id)
     {
         standalone_error("Cannot deduce AppID. Use the -svr_appid <AppID> launch option.");
     }
-    init_data.app_id = atoi(app_id);
 
-    const char *svr_path = cmdline.FindArg("-svr_path");
-    if (!svr_path)
+    if (const char *svr_path = cmdline.FindArg("-svr_path"))
+    {
+		init_data.svr_path = svr_path;
+    }
+    else
     {
         standalone_error("Cannot deduce SVR path. Use the -svr_path <path> launch option.");
     }
-    init_data.svr_path = svr_path;
-
-    return init_data;
 }
 
 void svr_init_from_dll()
 {
     main_thread_id = GetCurrentThreadId();
 
-    launcher_data = get_init_data_from_command_line();
+    get_init_data_from_command_line(launcher_data);
 
     MH_Initialize();
 
