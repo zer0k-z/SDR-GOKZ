@@ -10,6 +10,7 @@
 #include <Psapi.h>
 #include <stb_sprintf.h>
 #include <malloc.h>
+#include <TlHelp32.h>
 
 // Entrypoint for standalone SVR. Reverse engineered code to use the SVR API from unsupported games.
 //
@@ -390,7 +391,11 @@ void client_command(const char* cmd)
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_CSGO:
@@ -749,7 +754,11 @@ void update_recording_state()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
@@ -935,7 +944,11 @@ const char* get_cmd_args(void* args)
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_CSGO:
@@ -1113,7 +1126,11 @@ bool wait_for_game_libs()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_CSGO:
@@ -1146,7 +1163,11 @@ void patch_cvar_restrict()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
         {
@@ -1182,7 +1203,11 @@ IDirect3DDevice9Ex* get_d3d9ex_device()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_CSGO:
@@ -1204,7 +1229,11 @@ void* get_engine_client_ptr()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_CSS:
         case STEAM_GAME_CSGO:
         case STEAM_GAME_TF2:
@@ -1268,7 +1297,11 @@ void* get_engine_client_exec_cmd_fn(void* engine_client_ptr)
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
         {
@@ -1292,7 +1325,11 @@ void* get_signon_state_ptr()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
@@ -1327,7 +1364,11 @@ FnOverride get_eng_filter_time_override()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
         {
@@ -1363,7 +1404,11 @@ FnOverride get_start_movie_override()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
@@ -1393,7 +1438,11 @@ FnOverride get_end_movie_override()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
@@ -1465,11 +1514,21 @@ FnOverride get_snd_paint_chans_override()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
         {
             ov.target = pattern_scan("engine.dll", "55 8B EC 81 EC ?? ?? ?? ?? 8B 0D ?? ?? ?? ?? 53 33 DB 89 5D D0 89 5D D4", __FUNCTION__);
+            ov.hook = snd_paint_chans_override;
+            break;
+        }
+
+        case STEAM_GAME_HDTF:
+        {
+            ov.target = pattern_scan("engine.dll", "55 8B EC 81 EC ?? ?? ?? ?? 8B 0D ?? ?? ?? ?? 53 33 DB 89 5D C8 89 5D CC", __FUNCTION__);
             ov.hook = snd_paint_chans_override;
             break;
         }
@@ -1483,7 +1542,7 @@ FnOverride get_snd_paint_chans_override()
 
         case STEAM_GAME_CSGO:
         {
-            ov.target = pattern_scan("engine.dll", "55 8B EC 81 EC ?? ?? ?? ?? A0 ?? ?? ?? ?? 53 56 88 45 F4", __FUNCTION__);
+            ov.target = pattern_scan("engine.dll", "55 8B EC 81 EC ?? ?? ?? ?? A0 ?? ?? ?? ?? 53 56 88 45 ?? A1", __FUNCTION__);
             ov.hook = snd_paint_chans_override2;
             break;
         }
@@ -1501,7 +1560,11 @@ FnOverride get_snd_tx_stereo_override()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_BMS:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
@@ -1522,7 +1585,11 @@ void* get_snd_paint_time_ptr()
     switch (launcher_data.app_id)
     {
         case STEAM_GAME_ZPS:
+        case STEAM_GAME_SYNERGY:
         case STEAM_GAME_HL2:
+        case STEAM_GAME_EMPIRES:
+        case STEAM_GAME_HL2DM:
+        case STEAM_GAME_HDTF:
         case STEAM_GAME_CSS:
         case STEAM_GAME_TF2:
         {
@@ -1700,11 +1767,52 @@ DWORD WINAPI standalone_init_async(void* param)
 }
 
 // Called when launching by the standalone launcher. This is before the process has started, and there are no game libraries loaded here.
-extern "C" __declspec(dllexport) void svr_init_standalone(SvrGameInitData* init_data)
+extern "C" __declspec(dllexport) void svr_init_from_launcher(SvrGameInitData* init_data)
 {
     launcher_data = *init_data;
     main_thread_id = GetCurrentThreadId();
 
     // Init needs to be done async because we need to wait for the libraries to load while the game loads as normal.
     CreateThread(NULL, 0, standalone_init_async, NULL, 0, NULL);
+}
+
+DWORD find_main_thread_id()
+{
+    DWORD ret = 0;
+    DWORD pid = GetCurrentProcessId();
+
+    THREADENTRY32 entry;
+    entry.dwSize = sizeof(THREADENTRY32);
+
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid);
+
+    Thread32First(snap, &entry);
+
+    do
+    {
+        if (entry.th32OwnerProcessID == pid)
+        {
+            GUITHREADINFO gui_thread_info;
+            gui_thread_info.cbSize = sizeof(GUITHREADINFO);
+
+            if (GetGUIThreadInfo(entry.th32ThreadID, &gui_thread_info))
+            {
+                ret = entry.th32ThreadID;
+                break;
+            }
+        }
+    }
+    while (Thread32Next(snap, &entry));
+
+    CloseHandle(snap);
+    return ret;
+}
+
+// Called by the injector after the game has started. Most libraries are loaded here.
+extern "C" __declspec(dllexport) void svr_init_from_injector(SvrGameInitData* init_data)
+{
+    launcher_data = *init_data;
+    main_thread_id = find_main_thread_id();
+
+    standalone_init_async(NULL); // We are already in a thread, so call directly.
 }
