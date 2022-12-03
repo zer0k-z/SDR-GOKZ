@@ -567,6 +567,36 @@ void allocate_in_remote_process(s32 game_index, HANDLE process, void** remote_fu
     #endif
 }
 
+void inject_dll(HANDLE process)
+{
+    char full_dll_path[MAX_PATH];
+    strcpy_s(full_dll_path, working_dir);
+    strcat_s(full_dll_path, "\\svr_game.dll");
+
+    void* remote_mem = VirtualAllocEx(process, NULL, strlen(full_dll_path), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+    if (remote_mem == NULL)
+    {
+        DWORD code = GetLastError();
+        TerminateProcess(process, 1);
+        svr_log("VirtualAllocEx failed with code %lu\n", code);
+        launcher_error("Could not initialize standalone SVR. If you use an antivirus, add exception or disable.");
+    }
+
+    WriteProcessMemory(process, remote_mem, full_dll_path, strlen(full_dll_path), NULL);
+
+    HANDLE dll_thread_handle = CreateRemoteThread(process, 0, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, remote_mem, 0, 0);
+    if (dll_thread_handle == NULL)
+    {
+        DWORD code = GetLastError();
+        TerminateProcess(process, 1);
+        svr_log("CreateRemoteThread failed with code %lu\n", code);
+        launcher_error("Could not initialize standalone SVR. If you use an antivirus, add exception or disable.");
+    }
+
+    CloseHandle(dll_thread_handle);
+}
+
 s32 start_game(s32 game_index)
 {
     // We don't need the game directory necessarily (mods work differently) since we apply the -game parameter.
@@ -627,6 +657,10 @@ s32 start_game(s32 game_index)
         }
     }
 
+    char buf[MAX_PATH];
+    sprintf_s(buf, " -svr_appid %u -svr_path \"%s\"", GAME_APP_IDS[game_index], working_dir);
+    StringCchCatA(full_args, MAX_PATH, buf);
+
     test_game_build_against_known(game_index, game_build_id);
 
     launcher_log("Starting %s (build %d). If launching doesn't work then make sure any antivirus is disabled\n", GAME_NAMES[game_index], game_build_id);
@@ -646,14 +680,7 @@ s32 start_game(s32 game_index)
     void* remote_structure_addr;
     allocate_in_remote_process(game_index, info.hProcess, &remote_func_addr, &remote_structure_addr);
 
-    // Queue up our procedural function to run instantly on the main thread when the process is resumed.
-    if (!QueueUserAPC((PAPCFUNC)remote_func_addr, info.hThread, (ULONG_PTR)remote_structure_addr))
-    {
-        DWORD code = GetLastError();
-        TerminateProcess(info.hProcess, 1);
-        svr_log("QueueUserAPC failed with code %lu\n", code);
-        launcher_error("Could not initialize standalone SVR. If you use an antivirus, add exception or disable.");
-    }
+    inject_dll(info.hProcess);
 
     svr_log("Launcher finished, rest of the log is from the game\n");
     svr_log("---------------------------------------------------\n");

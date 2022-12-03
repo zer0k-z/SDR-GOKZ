@@ -14,6 +14,7 @@
     <ClCompile Include="..\deps\stb\stb_image_write.cpp" />
     <ClCompile Include="..\deps\stb\stb_sprintf.cpp" />
     <ClCompile Include="game_proc_profile.cpp" />
+    <ClCompile Include="svr_args.cpp" />
     <ClCompile Include="svr_atom.cpp" />
     <ClCompile Include="svr_logging.cpp" />
     <ClCompile Include="game_proc.cpp" />
@@ -26,6 +27,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game_proc_profile.h" />
+    <ClInclude Include="svr_args.h" />
     <ClInclude Include="svr_atom.h" />
     <ClInclude Include="svr_common.h" />
     <ClInclude Include="svr_defs.h" />
@@ -115,7 +117,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <StackReserveSize>4194304</StackReserveSize>
       <StackCommitSize>4096</StackCommitSize>
-      <AdditionalDependencies>D3D11.LIB;DXGI.LIB;Shlwapi.lib;$(SolutionDir)deps\minhook\build\VC16\lib\Release\libMinHook.x86.lib;d2d1.lib;DWRITE.LIB;Synchronization.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>D3D11.LIB;DXGI.LIB;Shlwapi.lib;$(SolutionDir)deps\minhook\build\VC16\lib\Release\libMinHook.x86.lib;d2d1.lib;DWRITE.LIB;Synchronization.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -146,7 +148,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <StackReserveSize>4194304</StackReserveSize>
       <StackCommitSize>4096</StackCommitSize>
-      <AdditionalDependencies>D3D11.LIB;DXGI.LIB;Shlwapi.lib;$(SolutionDir)deps\minhook\build\VC16\lib\Release\libMinHook.x86.lib;d2d1.lib;DWRITE.LIB;Synchronization.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>D3D11.LIB;DXGI.LIB;Shlwapi.lib;$(SolutionDir)deps\minhook\build\VC16\lib\Release\libMinHook.x86.lib;d2d1.lib;DWRITE.LIB;Synchronization.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

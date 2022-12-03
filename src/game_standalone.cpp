@@ -1,4 +1,5 @@
 #include "game_shared.h"
+#include "svr_args.h"
 #include <Windows.h>
 #include <MinHook.h>
 #include <assert.h>
@@ -30,6 +31,7 @@
 // Stuff passed in from launcher.
 SvrGameInitData launcher_data;
 DWORD main_thread_id;
+CommandLine cmdline;
 
 // --------------------------------------------------------------------------
 
@@ -1654,13 +1656,82 @@ void* get_snd_paint_buffer()
     return NULL;
 }
 
+typedef HRESULT(WINAPI *IDirect3D9_CreateDeviceFn)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice9**);
+
+IDirect3D9_CreateDeviceFn IDirect3D9_CreateDevice_original;
+
+HRESULT WINAPI IDirect3D9_CreateDevice_override(IDirect3D9* pDevice, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags,
+    D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
+{
+    svr_log("d3d9 hooks: IDirect3D9::CreateDevice called\n");
+
+    HRESULT ret = IDirect3D9_CreateDevice_original(pDevice, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
+
+    if (!gm_d3d9ex_device)
+    {
+        gm_d3d9ex_device = (IDirect3DDevice9Ex*)*ppReturnedDeviceInterface;
+    }
+
+    return ret;
+}
+
+template<typename T>
+bool hook_vtable(void* object, int index, T* hook, T** original)
+{
+    PVOID *vtable = *(PVOID**)object;
+
+    DWORD old_protect;
+    if (!VirtualProtect(vtable + index, sizeof(PVOID), PAGE_EXECUTE_READWRITE, &old_protect))
+    {
+        svr_log("VirtualProtect failed (error %lu)\n", GetLastError());
+        return false;
+    }
+
+    *original = (T*)InterlockedExchangePointer(vtable + index, hook);
+
+    VirtualProtect(vtable + index, sizeof(PVOID), old_protect, &old_protect);
+
+    return true;
+}
+
+FnHook Direct3DCreate9Ex_hook;
+
+HRESULT WINAPI Direct3DCreate9Ex_override(UINT SDKVersion, IDirect3D9Ex** unnamedParam2)
+{
+    svr_log("d3d9 hooks: Direct3DCreate9Ex called\n");
+
+    using Direct3DCreate9ExFn = HRESULT(WINAPI*)(UINT SDKVersion, IDirect3D9Ex** unnamedParam2);
+    Direct3DCreate9ExFn org_fn = (Direct3DCreate9ExFn)Direct3DCreate9Ex_hook.original;
+    HRESULT ret = org_fn(SDKVersion, unnamedParam2);
+
+    // Hook it's CreateDevice method.
+    if (!hook_vtable(*unnamedParam2, 16, IDirect3D9_CreateDevice_override, &IDirect3D9_CreateDevice_original))
+    {
+        svr_log("Could not hook IDirect3D9::CreateDevice\n");
+    }
+
+    return ret;
+}
+
+void create_d3d9_hooks()
+{
+    hook_function(FnOverride{ Direct3DCreate9Ex, Direct3DCreate9Ex_override }, &Direct3DCreate9Ex_hook);
+    MH_EnableHook(MH_ALL_HOOKS);
+}
+
 void create_game_hooks()
 {
     // It's impossible to know whether or not these will actually point to the right thing. We cannot verify it so therefore we don't.
     // If any turns out to point to the wrong thing, we get a crash. Patterns must be updated in such case. The launcher and log will say what
     // build has been started, and we know what build we have been testing against.
 
-    gm_d3d9ex_device = get_d3d9ex_device();
+    // Should be set before wait_for_game_libs() returns.
+    if (!gm_d3d9ex_device)
+    {
+        svr_log("Could not get DirectX device with d3d9 hooks, falling back to pattern scanning\n");
+        gm_d3d9ex_device = get_d3d9ex_device();
+    }
+
     gm_engine_client_ptr = get_engine_client_ptr();
     gm_engine_client_exec_cmd_fn = get_engine_client_exec_cmd_fn(gm_engine_client_ptr);
     gm_signon_state_ptr = get_signon_state_ptr();
@@ -1744,8 +1815,6 @@ DWORD WINAPI standalone_init_async(void* param)
         enable_autostop = false;
     }
 
-    MH_Initialize();
-
     create_game_hooks();
 
     if (!svr_init(launcher_data.svr_path, gm_d3d9ex_device))
@@ -1771,6 +1840,11 @@ extern "C" __declspec(dllexport) void svr_init_from_launcher(SvrGameInitData* in
 {
     launcher_data = *init_data;
     main_thread_id = GetCurrentThreadId();
+
+    MH_Initialize();
+
+    // Needs to run synchronously otherwise engine may create the DirectX device before hooking happends.
+    create_d3d9_hooks();
 
     // Init needs to be done async because we need to wait for the libraries to load while the game loads as normal.
     CreateThread(NULL, 0, standalone_init_async, NULL, 0, NULL);
@@ -1808,6 +1882,73 @@ DWORD find_main_thread_id()
     return ret;
 }
 
+SteamAppId app_id_from_game(const char *game)
+{
+    if (strcmp(game, "cstrike") == 0)
+        return STEAM_GAME_CSS;
+    if (strcmp(game, "csgo") == 0)
+        return STEAM_GAME_CSGO;
+    if (strcmp(game, "tf") == 0)
+        return STEAM_GAME_TF2;
+    if (strcmp(game, "zps") == 0)
+        return STEAM_GAME_ZPS;
+    if (strcmp(game, "empires") == 0)
+        return STEAM_GAME_EMPIRES;
+    if (strcmp(game, "synergy") == 0)
+        return STEAM_GAME_SYNERGY;
+    if (strcmp(game, "hl2") == 0)
+        return STEAM_GAME_HL2;
+    if (strcmp(game, "hl2mp") == 0)
+        return STEAM_GAME_HL2DM;
+    if (strcmp(game, "bms") == 0)
+        return STEAM_GAME_BMS;
+    if (strcmp(game, "hdtf") == 0)
+        return STEAM_GAME_HDTF;
+
+    return 0;
+}
+
+void get_init_data_from_command_line(SvrGameInitData &init_data)
+{
+    if (const char *app_id = cmdline.FindArg("-svr_appid"))
+    {
+        init_data.app_id = atoi(app_id);
+    }
+    else if (const char *game = cmdline.FindArg("-game"))
+    {
+        init_data.app_id = app_id_from_game(game);
+    }
+
+    if (!init_data.app_id)
+    {
+        standalone_error("Cannot deduce AppID. Use the -svr_appid <AppID> launch option.");
+    }
+
+    if (const char *svr_path = cmdline.FindArg("-svr_path"))
+    {
+		init_data.svr_path = svr_path;
+    }
+    else
+    {
+        standalone_error("Cannot deduce SVR path. Use the -svr_path <path> launch option.");
+    }
+}
+
+void svr_init_from_dll()
+{
+    main_thread_id = GetCurrentThreadId();
+
+    get_init_data_from_command_line(launcher_data);
+
+    MH_Initialize();
+
+    // Needs to run synchronously otherwise engine may create the DirectX device before hooking happends.
+    create_d3d9_hooks();
+
+    // Init needs to be done async because we need to wait for the libraries to load while the game loads as normal.
+    CreateThread(NULL, 0, standalone_init_async, NULL, 0, NULL);
+}
+
 // Called by the injector after the game has started. Most libraries are loaded here.
 extern "C" __declspec(dllexport) void svr_init_from_injector(SvrGameInitData* init_data)
 {
@@ -1815,4 +1956,25 @@ extern "C" __declspec(dllexport) void svr_init_from_injector(SvrGameInitData* in
     main_thread_id = find_main_thread_id();
 
     standalone_init_async(NULL); // We are already in a thread, so call directly.
+}
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID)
+{
+    switch (fdwReason)
+    {
+    case DLL_PROCESS_ATTACH:
+        DisableThreadLibraryCalls(hModule);
+
+        cmdline.Init();
+
+        svr_init_from_dll();
+
+        break;
+
+    case DLL_PROCESS_DETACH:
+        cmdline.Destroy();
+        break;
+    }
+
+    return TRUE;
 }
